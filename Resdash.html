@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ResFix – Resident Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg:#f5f3ef;--surface:#ffffff;--surface-2:#f0ede8;
+      --border:#e4e0d8;--border-dark:#c8c3b8;
+      --accent:#1a1a2e;--accent-2:#c8a96e;--accent-3:#2d6a4f;
+      --text:#1a1a2e;--text-muted:#6b6660;--text-sub:#a09890;
+      --danger:#c0392b;--warn:#b07d2a;
+      --radius-sm:5px;--radius:10px;--radius-lg:16px;
+      --shadow-sm:0 1px 3px rgba(26,26,46,.06),0 1px 2px rgba(26,26,46,.04);
+      --shadow:0 4px 16px rgba(26,26,46,.08),0 1px 4px rgba(26,26,46,.04);
+      --font:'DM Sans',sans-serif;--font-head:'Syne',sans-serif;--mono:'DM Mono',monospace;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;-webkit-font-smoothing:antialiased}
+    ::-webkit-scrollbar{width:5px;height:5px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:var(--border-dark);border-radius:99px}
+
+    .navbar{position:sticky;top:0;z-index:100;background:rgba(245,243,239,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 2rem;height:62px}
+    .logo{display:flex;align-items:center;gap:.6rem;font-family:var(--font-head);font-size:1.15rem;font-weight:800;letter-spacing:-.03em;color:var(--accent);text-decoration:none}
+    .logo-mark{width:30px;height:30px;border-radius:var(--radius-sm);background:var(--accent);display:grid;place-items:center;flex-shrink:0}
+    .nav-right{display:flex;align-items:center;gap:1.25rem}
+    .nav-user{display:flex;align-items:center;gap:.65rem}
+    .avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);border:2px solid var(--accent-2);display:grid;place-items:center;font-family:var(--font-head);font-size:.78rem;font-weight:700;color:#fff;flex-shrink:0;user-select:none}
+    .nav-name{font-size:.875rem;font-weight:500;color:var(--text-muted)}
+    .btn-logout{font-family:var(--font);font-size:.8125rem;font-weight:500;color:var(--text-muted);background:transparent;border:1px solid var(--border-dark);border-radius:var(--radius-sm);padding:.35rem .9rem;cursor:pointer;transition:color .15s,border-color .15s,background .15s}
+    .btn-logout:hover{color:var(--text);border-color:var(--accent);background:var(--surface)}
+
+    .page{max-width:980px;margin:0 auto;padding:2.5rem 1.5rem 6rem}
+    .page-header{margin-bottom:2.25rem;animation:fadeUp .4s ease both}
+    .breadcrumb{display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:.75rem;color:var(--text-sub);margin-bottom:.7rem;letter-spacing:.02em}
+    .page-header h1{font-family:var(--font-head);font-size:1.875rem;font-weight:800;letter-spacing:-.04em;color:var(--accent);line-height:1.15}
+    .page-header p{font-size:.9rem;color:var(--text-muted);margin-top:.35rem}
+
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem;animation:fadeUp .4s ease .06s both}
+    @media(max-width:640px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem 1.25rem;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:.3rem}
+    .stat-label{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-sub)}
+    .stat-value{font-family:var(--font-head);font-size:1.75rem;font-weight:800;letter-spacing:-.04em;color:var(--accent);line-height:1}
+    .stat-card.accent-pending .stat-value{color:var(--warn)}
+    .stat-card.accent-resolved .stat-value{color:var(--accent-3)}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2rem;margin-bottom:2rem;box-shadow:var(--shadow);animation:fadeUp .4s ease .1s both}
+    .card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.75rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)}
+    .card-title{font-family:var(--font-head);font-size:1rem;font-weight:700;letter-spacing:-.02em;color:var(--text)}
+    .card-sub{font-size:.8125rem;color:var(--text-muted);margin-top:.2rem}
+    .card-icon{width:38px;height:38px;border-radius:var(--radius-sm);background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;flex-shrink:0}
+
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+    @media(max-width:560px){.form-row{grid-template-columns:1fr}}
+    .form-row.solo{grid-template-columns:1fr}
+    .field{display:flex;flex-direction:column;gap:.45rem}
+    .field-label{font-size:.78rem;font-weight:600;color:var(--text-muted);letter-spacing:.04em;text-transform:uppercase;font-family:var(--mono)}
+    .field-label .req{color:var(--accent-2);margin-left:2px}
+    .field input,.field select,.field textarea{font-family:var(--font);font-size:.9rem;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.65rem .9rem;outline:none;width:100%;transition:border-color .15s,box-shadow .15s,background .15s}
+    .field select{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%236b6660' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .875rem center;padding-right:2.5rem;background-color:var(--bg)}
+    .field textarea{resize:vertical;min-height:108px;line-height:1.65}
+    .field input::placeholder,.field textarea::placeholder{color:var(--text-sub)}
+    .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 3px rgba(26,26,46,.07)}
+    .field input:hover:not(:focus),.field select:hover:not(:focus),.field textarea:hover:not(:focus){border-color:var(--border-dark)}
+    .char-hint{font-size:.72rem;font-family:var(--mono);color:var(--text-sub);text-align:right}
+    .char-hint.warn{color:var(--warn)}
+
+    .upload-zone{border:1.5px dashed var(--border-dark);border-radius:var(--radius);padding:1.75rem 1.5rem;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg)}
+    .upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:var(--surface-2)}
+    .upload-icon{width:42px;height:42px;border-radius:var(--radius-sm);background:var(--surface);border:1px solid var(--border);display:inline-grid;place-items:center;margin-bottom:.75rem;box-shadow:var(--shadow-sm)}
+    .upload-title{font-size:.875rem;font-weight:600;color:var(--text)}
+    .upload-sub{font-size:.8rem;color:var(--text-muted);margin-top:.2rem}
+    .preview-row{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:.875rem}
+    .preview-thumb{position:relative;width:72px;height:72px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+    .preview-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .remove-btn{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(245,243,239,.95);border:1px solid var(--border);color:var(--text-muted);font-size:.65rem;cursor:pointer;display:grid;place-items:center;transition:background .15s,color .15s}
+    .remove-btn:hover{background:var(--danger);color:#fff;border-color:transparent}
+
+    .form-footer{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border)}
+    .form-error{font-size:.8125rem;color:var(--danger);min-height:1.25rem;display:flex;align-items:center;gap:.35rem}
+
+    .btn-primary{font-family:var(--font-head);font-size:.9rem;font-weight:700;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:.75rem 1.75rem;cursor:pointer;transition:background .15s,transform .1s,opacity .15s;display:inline-flex;align-items:center;gap:.5rem;letter-spacing:-.01em;white-space:nowrap}
+    .btn-primary:hover:not(:disabled){background:#2c2c4e}
+    .btn-primary:active:not(:disabled){transform:translateY(1px)}
+    .btn-primary:disabled{opacity:.45;cursor:not-allowed}
+    .btn-ghost{font-family:var(--font);font-size:.8125rem;font-weight:500;background:transparent;color:var(--text-muted);border:1px solid var(--border-dark);border-radius:var(--radius-sm);padding:.5rem 1rem;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:.4rem}
+    .btn-ghost:hover{color:var(--text);border-color:var(--accent);background:var(--surface-2)}
+    .btn-danger{font-family:var(--font);font-size:.8125rem;font-weight:500;background:transparent;color:var(--danger);border:1px solid #f5b2b2;border-radius:var(--radius-sm);padding:.5rem 1rem;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:.4rem}
+    .btn-danger:hover{background:var(--danger);color:#fff;border-color:var(--danger)}
+    .spinner{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:spin .65s linear infinite;flex-shrink:0}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem}
+    .section-title{font-family:var(--font-head);font-size:1rem;font-weight:700;letter-spacing:-.03em}
+    .section-right{display:flex;align-items:center;gap:.5rem}
+    .count-badge{font-family:var(--mono);font-size:.72rem;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:.22em .75em;color:var(--text-muted)}
+    .refresh-btn{font-family:var(--mono);font-size:.72rem;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.3em .8em;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:.35rem}
+    .refresh-btn:hover{border-color:var(--accent);color:var(--text)}
+    .refresh-btn.spinning svg{animation:spin .65s linear infinite}
+
+    .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow);animation:fadeUp .4s ease .15s both}
+    .table-scroll{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:.875rem}
+    thead tr{background:var(--surface-2);border-bottom:1px solid var(--border)}
+    th{padding:.8rem 1.1rem;text-align:left;font-family:var(--mono);font-size:.68rem;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--text-sub);white-space:nowrap}
+    tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+    tbody tr:last-child{border-bottom:none}
+    tbody tr:hover{background:var(--surface-2)}
+    td{padding:.9rem 1.1rem;vertical-align:middle}
+    td.mono{font-family:var(--mono);font-size:.8125rem;color:var(--text-muted)}
+    .cat-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.8rem;font-weight:500;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.25em .65em;color:var(--text-muted);white-space:nowrap}
+    .cat-dot{width:6px;height:6px;border-radius:50%;background:var(--accent-2);flex-shrink:0}
+    .desc-cell{max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-muted);font-size:.84rem}
+    .thumbs{display:flex;gap:.4rem}
+    .thumbs img{width:36px;height:36px;border-radius:var(--radius-sm);object-fit:cover;border:1px solid var(--border);cursor:pointer;transition:opacity .15s,transform .15s}
+    .thumbs img:hover{opacity:.8;transform:scale(1.08)}
+    .no-photo{font-family:var(--mono);font-size:.73rem;color:var(--text-sub)}
+    .badge{display:inline-flex;align-items:center;gap:.3rem;padding:.28em .75em;border-radius:99px;font-family:var(--mono);font-size:.68rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+    .badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.8;flex-shrink:0}
+    .badge-pending{background:#fef6e4;color:#9a6c00;border:1px solid #f0d89a}
+    .badge-in_progress{background:#e8f0fe;color:#1a56db;border:1px solid #b3caf7}
+    .badge-resolved{background:#e8f5ec;color:#1a6b3c;border:1px solid #9fd4b2}
+    .badge-rejected{background:#fde8e8;color:#9b1c1c;border:1px solid #f5b2b2}
+    .action-btns{display:flex;gap:.4rem;align-items:center}
+    .icon-btn{width:28px;height:28px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface-2);color:var(--text-muted);cursor:pointer;display:grid;place-items:center;transition:all .15s;flex-shrink:0}
+    .icon-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--surface)}
+    .icon-btn.danger:hover{border-color:var(--danger);color:var(--danger);background:#fde8e8}
+    .skeleton{display:inline-block;width:80%;height:16px;border-radius:var(--radius-sm);background:linear-gradient(90deg,var(--surface-2) 25%,var(--border) 50%,var(--surface-2) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite}
+    @keyframes shimmer{to{background-position:-200% 0}}
+    .empty-row td{text-align:center;padding:3.5rem 1rem;color:var(--text-sub);font-size:.875rem;line-height:2}
+    .empty-icon{width:40px;height:40px;border-radius:var(--radius);background:var(--surface-2);border:1px solid var(--border);display:inline-grid;place-items:center;margin-bottom:.5rem}
+    .expiry-badge{display:inline-flex;align-items:center;gap:.35rem;font-family:var(--mono);font-size:.65rem;background:#fff8e8;border:1px solid #f0d89a;border-radius:99px;padding:.2em .65em;color:#9a6c00;white-space:nowrap}
+
+    #toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(6px);background:var(--accent);color:#fff;padding:.8rem 1.5rem;border-radius:var(--radius);font-size:.875rem;font-weight:500;box-shadow:0 8px 32px rgba(26,26,46,.25);z-index:9999;display:none;opacity:0;align-items:center;gap:.65rem;min-width:240px;justify-content:center;transition:opacity .2s,transform .2s}
+    #toast.show{display:flex;opacity:1;transform:translateX(-50%) translateY(0)}
+    #toast.is-error{background:var(--danger)}
+    .toast-dot{width:7px;height:7px;border-radius:50%;background:#6ee7a8;flex-shrink:0}
+    #toast.is-error .toast-dot{background:#ffb3b3}
+
+    .modal-overlay{position:fixed;inset:0;background:rgba(26,26,46,.45);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:500;display:none;align-items:center;justify-content:center;padding:1rem}
+    .modal-overlay.open{display:flex}
+    .modal{background:var(--surface);border-radius:var(--radius-lg);box-shadow:0 24px 64px rgba(26,26,46,.18);width:100%;max-width:600px;max-height:90vh;overflow-y:auto;animation:modalIn .2s ease both}
+    @keyframes modalIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+    .modal-header{display:flex;align-items:center;justify-content:space-between;padding:1.5rem 1.75rem 1.25rem;border-bottom:1px solid var(--border)}
+    .modal-title{font-family:var(--font-head);font-size:1.05rem;font-weight:700;letter-spacing:-.02em}
+    .modal-close{width:32px;height:32px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface-2);color:var(--text-muted);cursor:pointer;display:grid;place-items:center;transition:all .15s;font-size:1rem}
+    .modal-close:hover{background:var(--border);color:var(--text)}
+    .modal-body{padding:1.5rem 1.75rem}
+    .modal-footer{display:flex;align-items:center;justify-content:flex-end;gap:.75rem;padding:1.25rem 1.75rem;border-top:1px solid var(--border)}
+    .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem}
+    @media(max-width:480px){.detail-grid{grid-template-columns:1fr}}
+    .detail-item{display:flex;flex-direction:column;gap:.3rem}
+    .detail-label{font-family:var(--mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-sub)}
+    .detail-value{font-size:.9rem;color:var(--text);font-weight:500}
+    .detail-full{margin-bottom:1.25rem}
+    .detail-desc{font-size:.9rem;color:var(--text-muted);line-height:1.7;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.875rem 1rem}
+    .detail-photos{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:.5rem}
+    .detail-photos img{width:80px;height:80px;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--border);cursor:pointer;transition:opacity .15s,transform .15s}
+    .detail-photos img:hover{opacity:.85;transform:scale(1.04)}
+    .delete-body{padding:1.5rem 1.75rem;text-align:center}
+    .delete-icon{width:52px;height:52px;border-radius:50%;background:#fde8e8;border:1px solid #f5b2b2;display:grid;place-items:center;margin:0 auto 1rem}
+    .delete-title{font-family:var(--font-head);font-size:1.05rem;font-weight:700;margin-bottom:.5rem}
+    .delete-sub{font-size:.875rem;color:var(--text-muted);line-height:1.6}
+
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+    @media(max-width:500px){
+      .page{padding:1.25rem 1rem 6rem}
+      .card{padding:1.25rem}
+      .navbar{padding:0 1rem}
+      .nav-name{display:none}
+      .btn-primary{width:100%;justify-content:center}
+      .form-footer{flex-direction:column;align-items:stretch}
+      .modal-header,.modal-body,.modal-footer{padding-left:1.25rem;padding-right:1.25rem}
+    }
+  </style>
+</head>
+<body>
+
+<!-- Auth guard -->
+<script>
+  (async () => {
+    const { createClient } = supabase;
+    const sb = createClient(
+      'https://ccsoemmzlbsdsawikvya.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjc29lbW16bGJzZHNhd2lrdnlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMzI1MzYsImV4cCI6MjA4NjkwODUzNn0.drc7-Yck4DZOs2kiyNe9Kqv2zk3sjjsi48vj8FqvcYU'
+    );
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session?.user) { window.location.href = 'login.html'; return; }
+    if (session.user.email?.toLowerCase() === 'maintanance@res.com') {
+      window.location.href = 'mainDash.html';
+    }
+  })();
+</script>
+
+<header class="navbar">
+  <a href="landing.html" class="logo">
+    <div class="logo-mark">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    </div>
+    ResFix
+  </a>
+  <div class="nav-right">
+    <div class="nav-user">
+      <div class="avatar" id="navAvatar">JD</div>
+      <span class="nav-name" id="navName">Loading…</span>
+    </div>
+    <button class="btn-logout" id="logoutBtn">Sign out</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-header">
+    <div class="breadcrumb">Dashboard › Maintenance</div>
+    <h1 id="greeting">Good afternoon</h1>
+    <p>Submit a maintenance request or track your existing reports below.</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Total Reports</div>
+      <div class="stat-value" id="statTotal">—</div>
+    </div>
+    <div class="stat-card accent-pending">
+      <div class="stat-label">Pending</div>
+      <div class="stat-value" id="statPending">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">In Progress</div>
+      <div class="stat-value" id="statInProgress">—</div>
+    </div>
+    <div class="stat-card accent-resolved">
+      <div class="stat-label">Resolved</div>
+      <div class="stat-value" id="statResolved">—</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">New Maintenance Request</div>
+        <div class="card-sub">Fields marked <span style="color:var(--accent-2)">*</span> are required</div>
+      </div>
+      <div class="card-icon">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b6660" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+        </svg>
+      </div>
+    </div>
+    <form id="reportForm" autocomplete="off">
+      <div class="form-row">
+        <div class="field">
+          <label class="field-label">Category <span class="req">*</span></label>
+          <select id="category" required>
+            <option value="" disabled selected>Select a category</option>
+            <option value="plumbing">Plumbing / Water</option>
+            <option value="electrical">Electrical / Lights</option>
+            <option value="furniture">Furniture / Bed</option>
+            <option value="wifi">Wi-Fi / Network</option>
+            <option value="cleaning">Cleaning / Hygiene</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Room Number <span class="req">*</span></label>
+          <input type="text" id="roomNumber" placeholder="e.g. 204" required autocomplete="off">
+        </div>
+      </div>
+      <div class="form-row solo">
+        <div class="field">
+          <label class="field-label">Unit / Block / Residence <span class="req">*</span></label>
+          <input type="text" id="unitBlock" placeholder="e.g. Block A, Jameson House" required autocomplete="off">
+        </div>
+      </div>
+      <div class="form-row solo">
+        <div class="field">
+          <label class="field-label">Description <span class="req">*</span></label>
+          <textarea id="description" placeholder="Describe the issue — include when it started, how severe it is, and any relevant details." required maxlength="600"></textarea>
+          <div class="char-hint" id="charCount">600 remaining</div>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:.25rem">
+        <label class="field-label">Photos <span style="color:var(--text-sub);font-weight:400;text-transform:none;letter-spacing:0">(optional · max 2)</span></label>
+        <div class="upload-zone" id="dropZone">
+          <input type="file" id="issuePhotos" accept="image/jpeg,image/png,image/webp" multiple hidden>
+          <div class="upload-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6b6660" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <div class="upload-title">Click to upload or drag &amp; drop</div>
+          <div class="upload-sub">JPG or PNG · max 2 images</div>
+        </div>
+        <div class="preview-row" id="previewContainer"></div>
+      </div>
+      <div class="form-footer">
+        <div class="form-error" id="formError"></div>
+        <button type="submit" id="submitBtn" class="btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Submit Request
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="section-header">
+    <div class="section-title">My Reports</div>
+    <div class="section-right">
+      <div class="count-badge" id="reportCount">— reports</div>
+      <button class="refresh-btn" id="refreshBtn" onclick="loadReports()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Category</th><th>Room</th><th>Description</th>
+            <th>Photos</th><th>Submitted</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="reportsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- VIEW MODAL -->
+<div class="modal-overlay" id="viewModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Report Details</div>
+      <button class="modal-close" onclick="closeModal('viewModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-grid">
+        <div class="detail-item"><div class="detail-label">Category</div><div class="detail-value" id="vCategory">—</div></div>
+        <div class="detail-item"><div class="detail-label">Status</div><div class="detail-value" id="vStatus">—</div></div>
+        <div class="detail-item"><div class="detail-label">Room</div><div class="detail-value" id="vRoom">—</div></div>
+        <div class="detail-item"><div class="detail-label">Unit / Block</div><div class="detail-value" id="vUnit">—</div></div>
+        <div class="detail-item"><div class="detail-label">Submitted</div><div class="detail-value" id="vDate">—</div></div>
+        <div class="detail-item"><div class="detail-label">Auto-delete</div><div class="detail-value" id="vExpiry">—</div></div>
+      </div>
+      <div class="detail-full">
+        <div class="detail-label" style="margin-bottom:.4rem">Description</div>
+        <div class="detail-desc" id="vDesc">—</div>
+      </div>
+      <div class="detail-full" id="vPhotosWrap" style="display:none">
+        <div class="detail-label" style="margin-bottom:.4rem">Photos</div>
+        <div class="detail-photos" id="vPhotos"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('viewModal')">Close</button>
+      <button class="btn-danger" id="vDeleteBtn" onclick="confirmDeleteFromView()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+        Delete
+      </button>
+      <button class="btn-primary" id="vEditBtn" onclick="openEditFromView()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Edit
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit Report</div>
+      <button class="modal-close" onclick="closeModal('editModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editId">
+      <div class="form-row" style="margin-bottom:1rem">
+        <div class="field">
+          <label class="field-label">Category <span class="req">*</span></label>
+          <select id="editCategory">
+            <option value="plumbing">Plumbing / Water</option>
+            <option value="electrical">Electrical / Lights</option>
+            <option value="furniture">Furniture / Bed</option>
+            <option value="wifi">Wi-Fi / Network</option>
+            <option value="cleaning">Cleaning / Hygiene</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Room Number <span class="req">*</span></label>
+          <input type="text" id="editRoom" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-row solo" style="margin-bottom:1rem">
+        <div class="field">
+          <label class="field-label">Unit / Block <span class="req">*</span></label>
+          <input type="text" id="editUnit" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-row solo" style="margin-bottom:0">
+        <div class="field">
+          <label class="field-label">Description <span class="req">*</span></label>
+          <textarea id="editDescription" maxlength="600"></textarea>
+          <div class="char-hint" id="editCharCount">600 remaining</div>
+        </div>
+      </div>
+      <div class="form-error" id="editError" style="margin-top:.75rem"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('editModal')">Cancel</button>
+      <button class="btn-primary" id="editSaveBtn" onclick="saveEdit()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save Changes
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title">Delete Report</div>
+      <button class="modal-close" onclick="closeModal('deleteModal')">✕</button>
+    </div>
+    <div class="delete-body">
+      <div class="delete-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c0392b" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+      </div>
+      <div class="delete-title">Are you sure?</div>
+      <div class="delete-sub">This report will be permanently deleted and cannot be recovered.</div>
+    </div>
+    <div class="modal-footer" style="justify-content:center;gap:1rem">
+      <button class="btn-ghost" onclick="closeModal('deleteModal')">Cancel</button>
+      <button class="btn-danger" id="confirmDeleteBtn" onclick="executeDelete()" style="background:var(--danger);color:#fff;border-color:var(--danger)">Yes, delete it</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"><div class="toast-dot"></div><span id="toastMsg">Done</span></div>
+
+<script>
+  const SUPABASE_URL      = 'https://ccsoemmzlbsdsawikvya.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjc29lbW16bGJzZHNhd2lrdnlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMzI1MzYsImV4cCI6MjA4NjkwODUzNn0.drc7-Yck4DZOs2kiyNe9Kqv2zk3sjjsi48vj8FqvcYU';
+  const STORAGE_BUCKET    = 'report-photos';
+  const AUTO_DELETE_DAYS  = 3;
+
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let uploadedFiles  = [];
+  let activeReportId = null;
+  let currentUserId  = null; // ← stored after auth so all queries use it
+
+  async function initUser() {
+    const { data: { user } } = await sb.auth.getUser();
+    if (user) {
+      currentUserId = user.id; // ← save for scoped queries
+      const email    = user.email || '';
+      const name     = email.split('@')[0].replace(/[._]/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+      const initials = name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+      document.getElementById('navName').textContent   = name;
+      document.getElementById('navAvatar').textContent = initials;
+      const h = new Date().getHours();
+      const t = h<12?'morning':h<17?'afternoon':'evening';
+      document.getElementById('greeting').textContent = `Good ${t}, ${name.split(' ')[0]}`;
+    }
+  }
+
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
+    await sb.auth.signOut();
+    window.location.href = 'login.html';
+  });
+
+  function showToast(msg='Done', isError=false) {
+    const t = document.getElementById('toast');
+    document.getElementById('toastMsg').textContent = msg;
+    t.classList.toggle('is-error', isError);
+    t.style.display = 'flex';
+    requestAnimationFrame(() => t.classList.add('show'));
+    setTimeout(() => {
+      t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(6px)';
+      setTimeout(()=>{ t.style.display='none'; t.classList.remove('show'); t.style.opacity=''; t.style.transform=''; },220);
+    }, 4000);
+  }
+
+  function cap(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : '—'; }
+
+  function expiryInfo(report) {
+    if (report.status !== 'resolved') return null;
+    const resolvedAt = new Date(report.updated_at || report.created_at);
+    const expiresAt  = new Date(resolvedAt.getTime() + AUTO_DELETE_DAYS * 864e5);
+    const diffMs     = expiresAt - new Date();
+    if (diffMs <= 0) return { label: 'Deleting soon', urgent: true };
+    const diffDays = Math.floor(diffMs / 864e5);
+    const diffHrs  = Math.floor(diffMs / 36e5);
+    if (diffDays < 1) return { label: `~${diffHrs}h remaining`, urgent: true };
+    return { label: `${diffDays}d remaining`, urgent: diffDays < 1 };
+  }
+
+  function updateStats(reports) {
+    document.getElementById('statTotal').textContent      = reports.length;
+    document.getElementById('statPending').textContent    = reports.filter(r=>r.status==='pending').length;
+    document.getElementById('statInProgress').textContent = reports.filter(r=>r.status==='in_progress').length;
+    document.getElementById('statResolved').textContent   = reports.filter(r=>r.status==='resolved').length;
+    document.getElementById('reportCount').textContent    = `${reports.length} report${reports.length!==1?'s':''}`;
+  }
+
+  async function purgeOldResolvedReports() {
+    if (!currentUserId) return;
+    const cutoff = new Date(Date.now() - AUTO_DELETE_DAYS * 864e5).toISOString();
+    // Only purge the current user's own resolved reports
+    await sb.from('reports').delete()
+      .eq('user_id', currentUserId)
+      .eq('status', 'resolved')
+      .lt('updated_at', cutoff);
+  }
+
+  async function loadReports() {
+    if (!currentUserId) return; // wait for auth
+    const tbody      = document.getElementById('reportsBody');
+    const refreshBtn = document.getElementById('refreshBtn');
+    refreshBtn.classList.add('spinning');
+    tbody.innerHTML = [1,2,3].map(()=>`<tr>${[1,2,3,4,5,6,7].map(()=>`<td><span class="skeleton"></span></td>`).join('')}</tr>`).join('');
+
+    await purgeOldResolvedReports();
+
+    // ── KEY FIX: filter by current user's id ──
+    const { data: reports, error } = await sb
+      .from('reports')
+      .select('*')
+      .eq('user_id', currentUserId)
+      .order('created_at', { ascending: false });
+
+    refreshBtn.classList.remove('spinning');
+    if (error) {
+      showToast('Failed to load reports: '+error.message, true);
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="7"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a09890" stroke-width="1.75"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div>Could not connect to database</div></td></tr>`;
+      return;
+    }
+    updateStats(reports);
+    renderTable(reports);
+  }
+
+  function renderTable(reports) {
+    const tbody = document.getElementById('reportsBody');
+    tbody.innerHTML = '';
+    if (!reports.length) {
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="7"><div class="empty-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a09890" stroke-width="1.75"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div>No reports yet — submit one above</div></td></tr>`;
+      return;
+    }
+    reports.forEach(r => {
+      const d      = new Date(r.created_at);
+      const date   = d.toLocaleDateString('en-ZA',{day:'2-digit',month:'short',year:'numeric'});
+      const time   = d.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'});
+      const status = r.status || 'pending';
+      const desc   = (r.description||'').replace(/</g,'&lt;');
+      const expiry = expiryInfo(r);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="cat-tag"><span class="cat-dot"></span>${cap(r.category)}</span></td>
+        <td class="mono">${r.room||'—'}</td>
+        <td><div class="desc-cell" title="${desc}">${desc.substring(0,80)}${desc.length>80?'…':''}</div></td>
+        <td><div class="thumbs">
+          ${r.picture_1?`<img src="${r.picture_1}" alt="Photo 1" onclick="window.open('${r.picture_1}','_blank')">` :''}
+          ${r.picture_2?`<img src="${r.picture_2}" alt="Photo 2" onclick="window.open('${r.picture_2}','_blank')">` :''}
+          ${!r.picture_1&&!r.picture_2?`<span class="no-photo">—</span>`:''}
+        </div></td>
+        <td class="mono" style="white-space:nowrap">${date}<br><span style="color:var(--text-sub);font-size:.72rem">${time}</span></td>
+        <td>
+          <span class="badge badge-${status}">${status.replace('_',' ')}</span>
+          ${expiry ? `<br><span class="expiry-badge" style="margin-top:.35rem">⏱ ${expiry.label}</span>` : ''}
+        </td>
+        <td><div class="action-btns">
+          <button class="icon-btn" title="View" onclick="openView('${r.id}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <button class="icon-btn" title="Edit" onclick="openEdit('${r.id}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="icon-btn danger" title="Delete" onclick="openDelete('${r.id}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          </button>
+        </div></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function openModal(id)  { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(el => el.classList.remove('open'));
+  });
+
+  async function openView(id) {
+    activeReportId = id;
+    const { data: r, error } = await sb.from('reports').select('*').eq('id',id).single();
+    if (error || !r) { showToast('Could not load report', true); return; }
+    const d      = new Date(r.created_at);
+    const status = r.status || 'pending';
+    const expiry = expiryInfo(r);
+    document.getElementById('vCategory').textContent = cap(r.category);
+    document.getElementById('vRoom').textContent     = r.room || '—';
+    document.getElementById('vUnit').textContent     = r.unit || '—';
+    document.getElementById('vDate').textContent     = d.toLocaleString('en-ZA',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    document.getElementById('vDesc').textContent     = r.description || '—';
+    document.getElementById('vStatus').innerHTML     = `<span class="badge badge-${status}">${status.replace('_',' ')}</span>`;
+    const expiryEl = document.getElementById('vExpiry');
+    if (expiry) expiryEl.innerHTML = `<span class="expiry-badge">⏱ ${expiry.label}</span>`;
+    else expiryEl.textContent = status === 'resolved' ? 'Deleting soon' : 'N/A';
+    const photosWrap = document.getElementById('vPhotosWrap');
+    const photosEl   = document.getElementById('vPhotos');
+    if (r.picture_1 || r.picture_2) {
+      photosEl.innerHTML = '';
+      if (r.picture_1) { const img=document.createElement('img'); img.src=r.picture_1; img.onclick=()=>window.open(r.picture_1,'_blank'); photosEl.appendChild(img); }
+      if (r.picture_2) { const img=document.createElement('img'); img.src=r.picture_2; img.onclick=()=>window.open(r.picture_2,'_blank'); photosEl.appendChild(img); }
+      photosWrap.style.display = 'block';
+    } else { photosWrap.style.display = 'none'; }
+    openModal('viewModal');
+  }
+
+  async function openEdit(id) {
+    activeReportId = id;
+    const { data: r, error } = await sb.from('reports').select('*').eq('id',id).single();
+    if (error || !r) { showToast('Could not load report', true); return; }
+    document.getElementById('editId').value              = r.id;
+    document.getElementById('editCategory').value        = r.category;
+    document.getElementById('editRoom').value            = r.room;
+    document.getElementById('editUnit').value            = r.unit;
+    document.getElementById('editDescription').value     = r.description || '';
+    document.getElementById('editError').textContent     = '';
+    const left = 600 - (r.description||'').length;
+    document.getElementById('editCharCount').textContent = `${left} remaining`;
+    document.getElementById('editCharCount').classList.toggle('warn', left < 80);
+    closeModal('viewModal');
+    openModal('editModal');
+  }
+  function openEditFromView() { if (activeReportId) openEdit(activeReportId); }
+
+  document.getElementById('editDescription').oninput = e => {
+    const left = 600 - e.target.value.length;
+    const el = document.getElementById('editCharCount');
+    el.textContent = `${left} remaining`;
+    el.classList.toggle('warn', left < 80);
+  };
+
+  async function saveEdit() {
+    const btn   = document.getElementById('editSaveBtn');
+    const errEl = document.getElementById('editError');
+    errEl.textContent = '';
+    const id   = document.getElementById('editId').value;
+    const cat  = document.getElementById('editCategory').value;
+    const room = document.getElementById('editRoom').value.trim();
+    const unit = document.getElementById('editUnit').value.trim();
+    const desc = document.getElementById('editDescription').value.trim();
+    if (!cat||!room||!unit||!desc) { errEl.textContent='Please fill in all required fields.'; return; }
+    btn.disabled = true;
+    btn.innerHTML = `<div class="spinner"></div> Saving…`;
+    const { error } = await sb.from('reports').update({ category:cat, room, unit, description:desc }).eq('id', id);
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Changes`;
+    if (error) { errEl.textContent = error.message; return; }
+    closeModal('editModal');
+    showToast('Report updated successfully');
+    loadReports();
+  }
+
+  function openDelete(id) { activeReportId = id; openModal('deleteModal'); }
+  function confirmDeleteFromView() { closeModal('viewModal'); openModal('deleteModal'); }
+
+  async function executeDelete() {
+    const btn = document.getElementById('confirmDeleteBtn');
+    btn.disabled = true; btn.textContent = 'Deleting…';
+    const { error } = await sb.from('reports').delete().eq('id', activeReportId);
+    btn.disabled = false; btn.textContent = 'Yes, delete it';
+    if (error) { showToast('Delete failed: '+error.message, true); return; }
+    closeModal('deleteModal');
+    showToast('Report deleted');
+    activeReportId = null;
+    loadReports();
+  }
+
+  async function uploadPhoto(file) {
+    const ext  = file.name.split('.').pop();
+    const path = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await sb.storage.from(STORAGE_BUCKET).upload(path, file, { cacheControl:'3600', upsert:false, contentType:file.type });
+    if (error) throw error;
+    const { data } = sb.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+    return data.publicUrl;
+  }
+
+  const dropZone  = document.getElementById('dropZone');
+  const fileInput = document.getElementById('issuePhotos');
+  const preview   = document.getElementById('previewContainer');
+  dropZone.onclick = () => fileInput.click();
+  dropZone.ondragover = dropZone.ondragenter = e => { e.preventDefault(); dropZone.classList.add('dragover'); };
+  dropZone.ondragleave = e => { e.preventDefault(); dropZone.classList.remove('dragover'); };
+  dropZone.ondrop = e => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); };
+  fileInput.onchange = e => handleFiles(e.target.files);
+
+  function handleFiles(files) {
+    if (uploadedFiles.length+files.length>2) { alert('Maximum 2 photos allowed.'); return; }
+    [...files].forEach(file => {
+      if (!file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const div = document.createElement('div');
+        div.className = 'preview-thumb';
+        div.innerHTML = `<img src="${ev.target.result}" alt="preview"><button type="button" class="remove-btn">✕</button>`;
+        div.querySelector('.remove-btn').onclick = () => { uploadedFiles.splice(uploadedFiles.indexOf(file),1); div.remove(); };
+        preview.appendChild(div);
+      };
+      reader.readAsDataURL(file);
+      uploadedFiles.push(file);
+    });
+  }
+
+  document.getElementById('description').oninput = e => {
+    const left = 600 - e.target.value.length;
+    const el = document.getElementById('charCount');
+    el.textContent = `${left} remaining`;
+    el.classList.toggle('warn', left < 80);
+  };
+
+  document.getElementById('reportForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const btn   = document.getElementById('submitBtn');
+    const errEl = document.getElementById('formError');
+    errEl.textContent = '';
+    const cat  = document.getElementById('category').value;
+    const room = document.getElementById('roomNumber').value.trim();
+    const unit = document.getElementById('unitBlock').value.trim();
+    const desc = document.getElementById('description').value.trim();
+    if (!cat||!room||!unit||!desc) { errEl.textContent='Please complete all required fields.'; return; }
+    btn.disabled = true;
+    btn.innerHTML = `<div class="spinner"></div> Submitting…`;
+    try {
+      let pic1=null, pic2=null;
+      if (uploadedFiles[0]) pic1 = await uploadPhoto(uploadedFiles[0]);
+      if (uploadedFiles[1]) pic2 = await uploadPhoto(uploadedFiles[1]);
+      const { error } = await sb.from('reports').insert({
+        user_id: currentUserId,   // ← always use the cached user id
+        category: cat, room, unit,
+        description: desc, picture_1: pic1, picture_2: pic2, status: 'pending',
+      });
+      if (error) throw error;
+      e.target.reset();
+      uploadedFiles = [];
+      preview.innerHTML = '';
+      document.getElementById('charCount').textContent = '600 remaining';
+      document.getElementById('charCount').classList.remove('warn');
+      showToast('Report submitted successfully');
+      loadReports();
+    } catch(err) {
+      errEl.textContent = err.message||'Submission failed.';
+      showToast('Submission failed', true);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Submit Request`;
+    }
+  };
+
+  // Init: get user first, then load their reports
+  initUser().then(() => loadReports());
+</script>
+</body>
+</html>
